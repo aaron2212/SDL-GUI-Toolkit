@@ -1,0 +1,9 @@
+#ifndef _ERRORS_H
+#define _ERRORS_H
+
+#define ERROR_SUCCESS                  0
+#define ERROR_INITIALIZATION_FAILED    1
+#define ERROR_WINDOW_CREATION_FAILED   2
+#define ERROR_RENDERER_CREATION_FAILED 3
+
+#endif
