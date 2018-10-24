@@ -1,6 +1,8 @@
 #include <iostream>
+#include <SDL2/SDL.h>
 
 #include "control.h"
+#include "../events/control_event.h"
 #include "../statics.h"
 #include "../window.h"
 
@@ -8,7 +10,6 @@
 Control::Control()
 {
     _id = nextControlId++; // Set the ID of the control
-	std::cout << "This ID: " << _id << std::endl;
 }
 
 // Control with parent. Control will be positioned relative to parent
@@ -24,6 +25,13 @@ Control()
 Control::~Control()
 {
 
+}
+
+// Handles mouse click events.
+// Calls any events handlers attached to mouse click events
+void ControlEvent::handleControlEvent(SDL_Event event)
+{
+	
 }
 
 // Set the size of the control
@@ -75,7 +83,7 @@ void Control::setborderColor(rgba borderColor)
     _borderColor = borderColor;
 }
 
-// Set the control's background color
+// Set the control's border color
 // TODO: implement
 void Control::setborderColor(Color borderColor)
 {
@@ -86,12 +94,10 @@ void Control::setborderColor(Color borderColor)
 // TODO: set all as added RECURSIVELY
 void Control::setAllAsAdded()
 {
-	this->_hasBeenAdded = true; // Set the current control as added
-
 	// Set all child controls as added
-	for (auto control: _childControls)
+	for (auto control: getAllControls())
 	{
-		control._hasBeenAdded = true;
+		control->_hasBeenAdded = true;
 	}
 }
 
@@ -119,86 +125,65 @@ void Control::hide()
     // TODO: implement
 }
 
-// Sort the list of controls by their z-index
-void Control::sortControls(std::list<Control>* allControls)
+// Set the z-index of the control, specifying if the element should be above or below other elements
+void Control::setZIndex(int zIndex)
 {
-	std::cout << "Sorting list of " << allControls->size() << " items!" << std::endl;
+	// Set the current control's z-index
+	this->_zIndex = zIndex;
 
-	if (allControls->size() > 1)
+	for (auto control: getAllControls())
 	{
-		bool swapped = true;
-
-		while (swapped)
+		if (control == this)
 		{
-			swapped = false;
-
-			for (auto it = allControls->begin(); it != allControls->end();)
-			{
-				if (*it != allControls->back())
-				{
-					auto currentControl = *it++; // Advance the iterator, so we can access the next control in the list
-					auto nextControl = *it;
-
-					//std::cout << "current control: " << currentControl.getId() << "; next control: " << nextControl.getId() << std::endl;
-
-					if (nextControl.getZIndex() < currentControl.getZIndex())
-					{
-						std::swap(currentControl, nextControl);
-						swapped = true;
-					}
-				}
-			}
+			control->_zIndex = zIndex;
 		}
+	}
+
+	// Redraw all the controls on the screen
+	if (this->_hasBeenAdded)
+	{
+		redrawScreen(_windowId);
 	}
 }
 
-// Equality comparison using `==`. Retur true if both control's have the same ID, false otherwise
-bool Control::operator==(const Control& other) const
-{
-	return this->_id == other._id;
-}
-
-// Equality comparison using `!=`. Return true if the control's do not have the same ID
-bool Control::operator!=(const Control& other) const
-{
-	return (this->_id != other._id);
-}
-
 // Draw the control and all its children on the screen
-void Control::drawAll(SDL_Window* window, SDL_Renderer* renderer)
+void Control::drawAll(SDL_Window* window)
 {
-	std::list<Control> allControls = getAllControls();
-	sortControls(&allControls);
+	SDL_Renderer* renderer = SDL_GetRenderer(window);
+	std::list<Control*> allControls = getAllControls();
+
+	// Sort the control's according to their z-index
+	allControls.sort([](Control current, Control next) { return current.getZIndex() > next.getZIndex(); });
 
 	// Iterate over each control in the list and draw it on the screen
 	for (auto control: allControls)
 	{
-		drawControl(&control, window, renderer);
+		control->setAsAdded();
+		drawControl(control, window, renderer);
 	}
 }
 
 // Get a list containing the current control and all of the control's child controls
-std::list<Control> Control::getAllControls()
+std::list<Control*> Control::getAllControls()
 {
 	// Maintain a list of all the controls
-	std::list<Control> allControls = std::list<Control>();
-
-	//for (auto )
-	allControls.push_back(*this);
+	std::list<Control*> allControls = std::list<Control*>();
+	
+	allControls.push_back(this);
 
 	// Add all the control's child controls to the list
-	if (this->_childControls.size() > 0)
+	if (!this->_childControls.empty())
 	{
 		// Get a list of the control's child controls
-		std::list<Control> childControls = this->getChildControls();
+		std::list<Control*> childControls = this->getChildControls();
 
 		// Iterate over each control's child controls and add it to the list
 		for (auto childControl: childControls)
 		{
+			childControl->_hasBeenAdded = true; // Set the current control as added to the sceen
 			allControls.push_back(childControl);
-			childControl._hasBeenAdded = true; // Set the current control as added to the sceen
 
-			addChildControls(childControl, &allControls); // Draw all of the current control's child controls
+			addChildControls(childControl, allControls); // Draw all of the current control's child controls
 		}
 	}
 
@@ -207,18 +192,18 @@ std::list<Control> Control::getAllControls()
 }
 
 // Draw the child controls associated with a control
-void Control::addChildControls(Control control, std::list<Control>* allControls)
+void Control::addChildControls(Control control, std::list<Control*> allControls)
 {
 	// Iterate over each child control in `control` recursively and draw it on the screen 
-	for (auto childControl: control.getChildControls()) // Iterating over B2
+	for (auto& childControl: control.getChildControls())
 	{
 		// Draw the parent control
-		allControls->push_back(childControl);
+		allControls.push_back(childControl);
 		//drawControl(&childControl, window, renderer); // B6
-		childControl._hasBeenAdded = true; // Set the control as added to the screen
+		childControl->_hasBeenAdded = true; // Set the control as added to the screen
 
 		// If there are child controls, draw them
-		if (childControl.getChildControls().size() > 0)
+		if (!childControl->getChildControls().empty())
 		{
 			addChildControls(childControl, allControls);
 		}
@@ -226,42 +211,45 @@ void Control::addChildControls(Control control, std::list<Control>* allControls)
 }
 
 // Draw a control on the screen
-// TODO: only draw control if its _visible field is set
 void Control::drawControl(Control* control, SDL_Window* window, SDL_Renderer* renderer)
 {
-	// The control's coordinates
-	Rectangle rect;
-	rect.x = control->getPosition().x;
-	rect.y = control->getPosition().y;
-	rect.w = control->getSize().w;
-	rect.h = control->getSize().h;
-
-	// Set the ID of the window the control belongs to
-	control->_windowId = SDL_GetWindowID(window);
-
-	// Draw the control
-	drawRect(renderer, rect, control->getBackgroundColor());
-
-	// Draw a border around the control if it has a border set
-	if (control->_hasBorder)
+	// Only draw control if its _visible field is set
+	if (control->_isVisible)
 	{
-		// Draw an outline around the button _borderThickness times
-		for (int i=0; i<control->_borderThickness; i++)
+		// The control's coordinates
+		Rectangle rect;
+		rect.x = control->getPosition().x;
+		rect.y = control->getPosition().y;
+		rect.w = control->getSize().w;
+		rect.h = control->getSize().h;
+
+		// Set the ID of the window the control belongs to
+		control->_windowId = SDL_GetWindowID(window);
+
+		// Draw the control
+		drawRect(renderer, rect, control->getBackgroundColor());
+
+		// Draw a border around the control if it has a border set
+		if (control->_hasBorder)
 		{
-			Rectangle rect;
-			rect.x = control->getPosition().x;
-			rect.y = control->getPosition().y;
-			rect.w = control->getSize().w;
-			rect.h = control->getSize().h;
+			// Draw an outline around the button _borderThickness times
+			for (int i=0; i<control->_borderThickness; i++)
+			{
+				Rectangle rect;
+				rect.x = control->getPosition().x;
+				rect.y = control->getPosition().y;
+				rect.w = control->getSize().w;
+				rect.h = control->getSize().h;
 
-			// Determine the color of the border
-			int r = control->getBorderColor().r;
-			int g = control->getBorderColor().g;
-			int b = control->getBorderColor().b;
-			int a = control->getBorderColor().a;
+				// Determine the color of the border
+				int r = control->getBorderColor().r;
+				int g = control->getBorderColor().g;
+				int b = control->getBorderColor().b;
+				int a = control->getBorderColor().a;
 
-			// Draw the border
-			drawRectOutline(renderer, (rect.x+i), (rect.y+i), (rect.w-(i*2)), (rect.h-(i*2)), r, g, b, a);
+				// Draw the border
+				drawRectOutline(renderer, (rect.x+i), (rect.y+i), (rect.w-(i*2)), (rect.h-(i*2)), r, g, b, a);
+			}
 		}
 	}
 }
@@ -274,21 +262,63 @@ void Control::addControl(Control* control)
 	// Draw the rectangle on the screen if it's parent control is already on the screen
 	if (this->_hasBeenAdded)
 	{
-		// Create a rectangle from the control's dimension and position
-		Rectangle rect;
-		rect.x = control->getPosition().x;
-		rect.y = control->getPosition().y;
-		rect.w = control->getSize().w;
-		rect.h = control->getSize().h;
-
-		Window* window = Window::getWindows()[_windowId]; // Get the window to draw the control on
-		SDL_Renderer* renderer = window->getRenderer(); // Get the renderer for the window
-		drawRect(renderer, rect, control->getBackgroundColor()); // Draw the rectangle
-		// Should be drawAllControls()
-		SDL_RenderPresent(renderer); // Render the drawn control
+		control->_zIndex = this->_zIndex+1; // Set the control's z-index to 1 greater than that of the parent's z-index
+		control->_parentId = this->_id; // Set the parent ID of the child control
+		this->_childControls.push_back(control);
+		redrawScreen(_windowId);
 	}
-
-	control->_zIndex = this->_zIndex+1;
+	else
+	{
+		this->_childControls.push_back(control); // Add the control as a child control of the current control
+	}
+	
+	control->_zIndex = this->_zIndex+1; // Set the control's z-index to +1 of the parent's z-index
 	control->_parentId = this->_id; // Set the parent ID of the child control
-	_childControls.push_back(*control); // Add the control as a child control of the current control
+}
+
+// Remove the control and all of its controls
+void Control::removeControl(Control* control)
+{
+	// "this" is button0
+	// Iterate over each of the control's child controls
+	
+	// Iterator has to be used otherwise we get a segfault when
+	// removing the control from the list
+	for (auto it = _childControls.begin(); it != _childControls.end(); it++)
+	{
+		std::cout << (*it)->_name << "::" << control->_name << std::endl;
+
+		if ((*it)->_id == control->_id)
+		{
+			// If the child control has more child controls, remove them from the list
+			if (!(*it)->_childControls.empty())
+			{
+				removeChildControls((*it));
+			}
+
+			//std::cout << "YESSSSSSS!!!0;;->>" << childControl->getName() << std::endl;
+			// "button0"'s _childControls
+			it = _childControls.erase(it);
+			redrawScreen(_windowId);
+		}
+
+		// Delete the child control
+		//childControl->~Control();
+	}
+}
+
+// Remove all of the control's child controls
+void Control::removeChildControls(Control* control)
+{
+	std::cout << "abc123" << std::endl;
+	for (auto childControl: control->_childControls)
+	{
+		if (!childControl->_childControls.empty())
+		{
+			removeChildControls(childControl);
+		}
+
+		_childControls.remove(childControl);
+		//childControl->~Control();
+	}
 }

@@ -44,17 +44,21 @@ class Window : public WindowEvent
 		void setBackgroundColor(Color color); // Used for setting a predefined Color
 		void setTitle(const char* title); // Set the window's title
 		void setResizable(bool isResizable); // Set the window to resizable or not
-		void setMinimumSize(Size size);
+		void setMinimumSize(Size size); // TODO: implement
 
 		// Used for determining a value pertaining to the current window
 		static int getNumberOfWindows(); // Return the number of windows currently on screen
 		static std::map<int, Window*> getWindows(); // Return the map of windows (id, Window)
 		inline SDL_Renderer* getRenderer() { return _renderer; } // Return the renderer used by the window
-		inline std::list<Control> getControls() { return _controls; } // Get the list of controls on the current window
+		inline std::list<Control*> getControls() { return _controls; } // Return the list of controls on the current window
 		rgba getBackgroundColor() { return _backgroundColor; }; // Return the background color of the window
-		inline Window getWindow() { return *this; }
-		inline int getWindowId() { return _id; }
-		inline std::string getTitle() { return _title; } // Get the window's title
+		inline Window getWindow() { return *this; } // Return the Window object
+		inline int getWindowId() { return _id; } // Return the window's ID
+		std::list<Control*> getAllControls(); // Get all the controls and child controls that have been added to the windoww
+		void addChildControls(Control* control, std::list<Control*>* allControls);
+		void deleteControls(Control* control);
+		void deleteChildControls();
+		inline std::string getTitle() { return _title; } // Return the window's title
 
 		bool isResizable(); // Determines whether the window is resizable or not
 		bool isVisible(); // Determines whether the window is hidden or not
@@ -62,7 +66,7 @@ class Window : public WindowEvent
 		void redrawWindow(Window* window); // Redraw the background color of the window and all of its controls
 		void hide(); // Hide the window
 		void show(); // Show the window
-		void addControl(Control control); // Add a control to the window
+		void addControl(Control* control); // Add a control to the window
 		void removeControl(Control control); // Remove a control from the window
 	
 	private:
@@ -78,7 +82,7 @@ class Window : public WindowEvent
 		bool _isResizable = true; // Holds a value indicating whether the window is resizable or not
 		bool _isVisible = false; // Determines if the window is visible
 
-		std::list<Control> _controls = std::list<Control>(); // A list of controls on the current window
+		std::list<Control*> _controls = std::list<Control*>(); // A list of controls on the current window
 };
 
 #endif

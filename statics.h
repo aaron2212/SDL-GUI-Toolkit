@@ -9,7 +9,7 @@
 static std::map<int, Window*> windows = std::map<int, Window*>();
 
 // The ID of the current window which has focus. ##NOT YET IMPLEMENTED##
-//static int currentWindowId;
+static int currentWindowId;
 
 // Maintains the ID to give to the next control
 static int nextControlId = 0;

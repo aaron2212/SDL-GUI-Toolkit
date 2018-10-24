@@ -17,12 +17,6 @@ Program::Program(int argc, char** argv)
 // Run the program
 void Program::run()
 {
-	for (auto window: Window::getWindows())
-	{
-		std::cout << "Title: " << window.second->getTitle() << std::endl;
-	}
-
-	std::cout << "B: " << Window::getNumberOfWindows() << std::endl;
 	// Continue to poll events as long as their are windows running
 	while (Window::getNumberOfWindows() > 0)
 	{
@@ -47,8 +41,9 @@ void Program::pollEvent()
 			case SDL_WINDOWEVENT:
 				windows.begin()->second->handleWindowEvent(event);
 				break;
+			// Handle mouse click events
 			case SDL_MOUSEBUTTONDOWN:
-				std::cout << "Mouse button down!" << std::endl;
+				windows.begin()->second->handleWindowClickEvent(event);
 				break;
 		}
 	}

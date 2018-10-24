@@ -6,6 +6,7 @@
 class Event
 {
     public:
+        void onClick();
         void onGotFocus();
         void onKeyDown();
         void onKeyUp();

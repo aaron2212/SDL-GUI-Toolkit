@@ -12,14 +12,17 @@ Button::Button(string text, int x, int y, int w, int h)
     _text = text;
     _position = Point {x, y};
     _size = Size {w, h};
+    _name = text;
 }
 
+// The button is positioned relative to its parent
 Button::Button(std::string text, int x, int y, int w, int h, Control* relativeToParent)
 : Control(relativeToParent)
 {
     _text = text;
     _position = Point {_position.x+x, _position.y+y};
     _size = Size {w, h};
+    _name = text;
 }
 
 // Create a new Button with text, a position and a size
@@ -29,6 +32,7 @@ Button::Button(std::string text, Point position, Size size)
     _text = text;
     _position = position;
     _size = size;
+    _name = text;
 }
 
 Button::Button(std::string text, Point position, Size size, Control* parentControl)

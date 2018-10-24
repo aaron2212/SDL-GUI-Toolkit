@@ -89,25 +89,38 @@ int Window::init()
 void WindowEvent::handleWindowEvent(SDL_Event event)
 {
 	Window* window = windows[event.window.windowID]; // Get the Window being closed, so we can access that Window's onClosed event handler
-	int windowId = event.window.windowID;
+	int windowId = event.window.windowID; // The ID of the window that the event was fired on
 
 	switch (event.window.event)
 	{
 		// Call the window closed handler, and pass in the ID of the window being closed
 		case SDL_WINDOWEVENT_CLOSE:
-			if (window->onClosed != NULL) { window->onClosed(); } // Call the onClosed event if the user has specified a function to handle the event
-			window->defaultOnClosed(windowId); // Call the default handler for closing windows
+			if (window->onClose != NULL) { window->onClose(); } // Call the onClosed event if the user has specified a function to handle the event
+			window->defaultOnClose(windowId); // Call the default handler for closing windows
 			break;
 		// Call the window resize handler and pass in the Window that is being resized
 		case SDL_WINDOWEVENT_RESIZED:
-			if (window->onResized != NULL) { window->onResized(); } // Call the onResize event if the user has specified a functionto handle the event
-			window->defaultOnResized(window); // Call the default handler for resizing windows
+			if (window->onResize != NULL) { window->onResize(); } // Call the onResize event if the user has specified a functionto handle the event
+			window->defaultOnResize(windowId); // Call the default handler for resizing windows
+			break;
+		// Determine which window has focus
+		case SDL_WINDOWEVENT_FOCUS_GAINED:
+			currentWindowId = windowId;
+			std::cout << "Current window ID: " << currentWindowId << std::endl;
 			break;
 	}
 }
 
+void WindowEvent::handleWindowClickEvent(SDL_Event event)
+{
+	int windowId = event.window.windowID;
+	Window* window = windows[windowId];
+	
+	std::cout << "(" << event.button.x << ", " << event.button.y << ") -> " << event.window.windowID << std::endl;
+}
+
 // The default handler for handling the closing of a window
-void WindowEvent::defaultOnClosed(int windowId)
+void WindowEvent::defaultOnClose(int windowId)
 {
 	// If the close button was clicked on the main window, close all the windows and quit the application
 	if (windowId == windows.begin()->first)
@@ -128,8 +141,9 @@ void WindowEvent::defaultOnClosed(int windowId)
 }
 
 // The default handler for handling the resizing of a window
-void WindowEvent::defaultOnResized(Window* window)
+void WindowEvent::defaultOnResize(int windowId)
 {
+	Window* window = windows[windowId];
 	window->redrawWindow(window); // Redraw all the controls on the window
 }
 
@@ -143,6 +157,7 @@ void Window::setBackgroundColor(int r, int g, int b, int a)
 
 	// Store the background color of the window in a variable
 	_backgroundColor = {r, g, b, a};
+	redrawScreen(_id);
 }
 
 // Set the background color of the window from the passed in rgba struct
@@ -202,7 +217,7 @@ bool Window::isVisible()
 	return _isVisible;
 }
 
-// Redraws the windows background color and controls
+// Redraws the window's background color and controls
 // TODO: implement rest of method!
 void Window::redrawWindow(Window* window)
 {
@@ -225,26 +240,80 @@ void Window::show()
 	redrawWindow(this); // Redraw the window's background color and controls
 }
 
+// Get a list of controls and child controls on the window
+std::list<Control*> Window::getAllControls()
+{
+	// Stores a list of all controls on the screen to be returned after all the controls have been added to it
+	std::list<Control*> allControls = std::list<Control*>();
+
+	// Iterate over each control on the window and add it and child controls to the list
+	for (auto control: _controls)
+	{
+		allControls.push_back(control);
+
+		// If the control has any child controls, iterate through those
+		// recursively and add them to the list
+		if (!control->getChildControls().empty())
+		{
+			addChildControls(control, &allControls);
+		}
+	}
+
+	// Return the list of controls
+	return allControls;
+}
+
+// Get a list of the control's child controls 
+void Window::addChildControls(Control* control, std::list<Control*>* allControls)
+{
+	// Iterate over each child control and add it to the list
+	for (auto childControl: control->getChildControls())
+	{
+		allControls->push_back(childControl);
+
+		// If the control has child controls, iterate through each child control
+		// recursively and add it to the list
+		if (!childControl->getChildControls().empty())
+		{
+			addChildControls(childControl, allControls);
+		}
+	}
+}
+
+// Delete the control and its child controls from the window
+void Window::deleteControls(Control* control)
+{
+	_controls.remove(control);
+}
+
 // Add a control to the window
-void Window::addControl(Control control)
+void Window::addControl(Control* control)
 {
 	_controls.push_back(control); // Add the control to the list
 
+	control->setWindowId(_id);
+
 	// Draw the current control and all of its children
-	control.drawAll(_window, _renderer);
+	control->drawAll(_window);
 }
 
 // Remove a control from the window
 void Window::removeControl(Control control)
 {
-	for (std::list<Control>::iterator controlIt=_controls.begin(); controlIt != _controls.end(); controlIt++)
+	// Iterate through each control on the window
+	for (auto windowControl: _controls)
 	{
-		if (controlIt->getId() == control.getId())
+		std::cout << windowControl->getName() << "::" << control.getName() << std::endl;
+		// If the control being removed is currently on the window, delete it
+		if (windowControl->getId() == control.getId())
 		{
-			//_controls.erase(controlIt);
-			//controlIt->~Control();
-			//redrawScreen(_id);
-			//_controls.remove(windowControl);
+			// Remove the control from the list of controls on this window
+			_controls.remove(windowControl);
+
+			std::cout << "Deleting " << control.getName() << std::endl;
+			redrawScreen(_id);
+
+			return;
 		}
 	}
 }

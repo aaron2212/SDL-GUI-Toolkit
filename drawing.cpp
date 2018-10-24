@@ -76,7 +76,7 @@ void drawRect(SDL_Renderer* renderer, int x, int y, int w, int h, int r, int g, 
     SDL_Rect* rect = new SDL_Rect {x, y, w, h}; // The rectangle to draw
     SDL_SetRenderDrawColor(renderer, r, g, b, a); // Set the color to draw the rectangle
     SDL_RenderFillRect(renderer, rect); // Draw the rectangle
-	std::cout << "Drawing rectangle with color: (" << r << ", " << g << ", " << b << ") at (" << x << ", " << y << ") -> (" << (x+w-1) << ", " << (y+h-1) << ")" << std::endl;
+	//std::cout << "Drawing rectangle with color: (" << r << ", " << g << ", " << b << ") at (" << x << ", " << y << ") -> (" << (x+w-1) << ", " << (y+h-1) << ")" << std::endl;
     SDL_RenderPresent(renderer);
 }
 
@@ -175,18 +175,17 @@ void drawRectOutline(SDL_Renderer* renderer, Rectangle rect, Color color)
 }
 
 // Redraw all of a control's child controls
-void getChildControls(Control control, std::list<Control>* allControls, SDL_Window* window, SDL_Renderer* renderer)
+void getChildControls(Control* control, std::list<Control*>* allControls)
 {
 	// Iterate over the control's child controls and draw each child control
-	for (auto childControl: control.getChildControls())
+	for (auto childControl: control->getChildControls())
 	{
-		//Control::drawControl(&childControl, window, renderer);
 		allControls->push_back(childControl);
 
 		// If the control has child controls, draw them too
-		if (!childControl.getChildControls().empty())
+		if (!childControl->getChildControls().empty())
 		{
-			getChildControls(childControl, allControls, window, renderer);
+			getChildControls(childControl, allControls);
 		}
 	}
 }
@@ -199,33 +198,37 @@ void redrawScreen(int windowId)
 	SDL_Window* sdlWindow = SDL_GetWindowFromID(windowId);
 	SDL_Renderer* sdlRenderer = SDL_GetRenderer(sdlWindow);
 
-	// Set the window's background color again
-	windowToRedraw->setBackgroundColor(windowToRedraw->getBackgroundColor());
+	// Set the window's background color again before redrawing each control
+	rgba backgroundColor = windowToRedraw->getBackgroundColor();
+	SDL_SetRenderDrawColor(sdlRenderer, backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a);
+	SDL_RenderClear(sdlRenderer);
+	SDL_RenderPresent(sdlRenderer);
 
 	// The list of controls
-	std::list<Control> allControls = std::list<Control>();
+	std::list<Control*> allControls = std::list<Control*>();
 
 	// Iterate over all of this window's controls and redraw each control
-	for (auto control: windowToRedraw->getControls())
+	std::list<Control*> controls = windowToRedraw->getControls();
+	
+	for (auto& control: controls)
 	{
-		//Control::drawControl(&control, sdlWindow, sdlRenderer);
+		//std::cout << control->getName() << std::endl;
 		allControls.push_back(control);
 
 		// If the control has child controls, draw them too
-		if (!control.getChildControls().empty())
+		if (!control->getChildControls().empty())
 		{
-			getChildControls(control, &allControls, sdlWindow, sdlRenderer);
+			getChildControls(control, &allControls);
 		}
 	}
 
 	// Sort the controls by their z-index
-	std::cout << "Size before: " << allControls.size() << std::endl;
-	Control::sortControls(&allControls);
-	std::cout << "Size after:" << allControls.size() << std::endl;
-
+	allControls.sort([](Control* current, Control* next) { return current->getZIndex() > next->getZIndex(); });
+	allControls.reverse();
+	
 	// Draw each control in the list
 	for (auto control: allControls)
 	{
-		Control::drawControl(&control, sdlWindow, sdlRenderer);
+		Control::drawControl(control, sdlWindow, sdlRenderer);
 	}
 }

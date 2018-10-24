@@ -36,46 +36,48 @@ class Control : Event
         inline void setAsAdded() { this->_hasBeenAdded = true; } // Sets the control as added to the screen
         inline void setHasBorder(bool hasBorder) { _hasBorder = hasBorder; } // Set whether the control has a border or no border
         void setAllAsAdded(); // Set the control and all of its children as added to the screen
-        inline void setZIndex(int zIndex) { _zIndex = zIndex; }
+        void setZIndex(int zIndex); // Set the control's z-index - its position above or below other controls on the window
+        inline void setName(std::string name) { _name = name; } // Set the name of the control
 
         void show(); // Show the control, making it visible
         void hide(); // Hide the control, making it invisible
         void addControl(Control* control); // Add a child control to the current control
-        void drawAll(SDL_Window* window, SDL_Renderer* renderer); // Draw the control and all of its children on the screen
-        void addChildControls(Control control, std::list<Control>* allControls);
+        void drawAll(SDL_Window* window); // Draw the control and all of its children on the screen
+        void addChildControls(Control control, std::list<Control*> allControls);
         static void drawControl(Control* control, SDL_Window* window, SDL_Renderer* renderer); // Draw the control on the screen
-        std::list<Control> getAllControls(); // Get a list containing the control and all of its child controls
+        std::list<Control*> getAllControls(); // Get a list containing the control and all of its child controls
         std::list<Control> getAllControlsOnWindow(int windowId);
-        void removeControl(Control); // Remove the control from the screen
-        static void sortControls(std::list<Control>* allControls); // Sort the list of controls by their z-index
-        bool operator==(const Control& other) const;
-        bool operator!=(const Control& other) const;
+        void removeControl(Control* control); // Remove the control from the screen
+        void removeChildControls(Control* childControl);
+        inline void print() { std::cout << "(" << _position.x << ", " << _position.y << ") -> (" << _size.w << ", " << _size.h << ")" << std::endl; }
 
         // Get the control's properties
         inline Size getSize() { return _size; } // Get the controls' size
         inline Point getPosition() { return _position; } // Get the control's position on the window
         inline rgba getBackgroundColor() { return _backgroundColor; } // Get the control's foreground color
         inline rgba getForegroundColor() { return _foregroundColor; } // Get the control's background color
-        inline std::list<Control> getChildControls() { return _childControls; }
+        inline std::list<Control*> getChildControls() { return _childControls; }
         inline int getId() { return _id; } // FOR TESTING: REMOVE IN FUTURE!
         inline int getParentId() { return _parentId; } // FOR TESTING: REMOVING IN FUTURE!
         inline int getBorderThickness() { return _borderThickness; } // Return the thickness of the border in pixels
         inline rgba getBorderColor() { return _borderColor; } // Return the color of the control's border
         inline int getZIndex() { return _zIndex; } // Get the Z index of the control on the screen
+        inline std::string getName() { return _name; }
         inline bool isVisible() { return _isVisible; } // Determines the visibility of the controls
 
     private:
-        std::list<Control> _childControls = std::list<Control>(); // This controls child controls
+        std::list<Control*> _childControls = std::list<Control*>(); // This controls child controls
 
     protected:
         int _id, _parentId = -1; // The ID of the control and ID of parent Control it belongs to; -1 for no parent
+        std::string _name;
         Point _position = DEFAULT_CONTROL_POSITION; // The position of the control on the window
         Size _size = DEFAULT_CONTROL_SIZE; // The size of the control
         rgba _backgroundColor = DEFAULT_CONTROL_BACKGROUND_COLOR; // The control's background color
         rgba _foregroundColor = DEFAULT_CONTROL_FOREGROUND_COLOR; // The control's foreground color
         bool _isVisible = true; // Determines the visibility of the control
         bool _hasBeenAdded = false;
-        int _windowId; // The window that the control belongs to
+        int _windowId = -1; // The window that the control belongs to
         std::string _title; // The control's title
         int _borderThickness = DEFAULT_CONTROL_BORDER_PIXEL_THICKNESS; // How many pixels thick the border is
         bool _hasBorder = DEFAULT_CONTROL_HAS_BORDER; // Determines if the control has a border or not
